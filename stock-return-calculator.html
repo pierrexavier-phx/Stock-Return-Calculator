@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Calculate your total stock return including price appreciation and dividends." />
+<title>Stock Return Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --border: #e2e0da;
+    --text: #1a1916;
+    --muted: #6b6a66;
+    --green: #1a6b3a;
+    --green-bg: #eaf5ee;
+    --red: #9b2020;
+    --red-bg: #fdf0f0;
+    --accent: #1a1916;
+    --mono: 'Courier New', Courier, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111110;
+      --surface: #1c1c1b;
+      --border: #2e2e2c;
+      --text: #f0ede8;
+      --muted: #888784;
+      --green: #4ade80;
+      --green-bg: #0d2b1a;
+      --red: #f87171;
+      --red-bg: #2b0d0d;
+      --accent: #f0ede8;
+    }
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem 4rem;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  header {
+    margin-bottom: 2.5rem;
+  }
+
+  header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  header p {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-top: 0.35rem;
+    line-height: 1.5;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-wrap .prefix {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.875rem;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    padding-left: 1.6rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    outline: none;
+    appearance: none;
+    -moz-appearance: textfield;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--accent);
+  }
+
+  input.no-prefix {
+    padding-left: 0.75rem;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .metric {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+  }
+
+  .metric .label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .metric .value {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .metric .value.positive { color: var(--green); }
+  .metric .value.negative { color: var(--red); }
+
+  .formula-box {
+    margin-top: 1.25rem;
+    padding: 0.85rem 1rem;
+    background: var(--bg);
+    border-radius: 8px;
+    border-left: 3px solid var(--border);
+  }
+
+  .formula-box .label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .formula-box code {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.6;
+    word-break: break-word;
+  }
+
+  .breakdown {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+
+  .breakdown:last-child { border-bottom: none; }
+
+  .breakdown .name { color: var(--muted); }
+  .breakdown .amt { font-weight: 500; color: var(--text); }
+  .breakdown .amt.pos { color: var(--green); }
+  .breakdown .amt.neg { color: var(--red); }
+
+  footer {
+    margin-top: 2rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 420px) {
+    .input-grid { grid-template-columns: 1fr; }
+    .results-grid { grid-template-columns: 1fr 1fr; }
+    body { padding: 2rem 1rem 3rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Stock return calculator</h1>
+    <p>Total return = price appreciation + all dividends received, as a % of what you paid.</p>
+  </header>
+
+  <div class="card">
+    <div class="section-label">Your position</div>
+    <div class="input-grid">
+      <div class="field">
+        <label for="buyPrice">Purchase price</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="buyPrice" value="100" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="currentPrice">Current price</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="currentPrice" value="130" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="dividends">Total dividends received</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="dividends" value="5" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="shares">Shares owned</label>
+        <div class="input-wrap">
+          <input type="number" id="shares" value="10" min="1" step="1" class="no-prefix" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Results</div>
+    <div class="results-grid">
+      <div class="metric">
+        <div class="label">Total return</div>
+        <div class="value" id="totalReturn">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Net profit</div>
+        <div class="value" id="netProfit">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Price gain</div>
+        <div class="value" id="priceGain">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Dividend return</div>
+        <div class="value" id="divReturn">—</div>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div class="label">Formula</div>
+      <code id="formulaText">—</code>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Breakdown</div>
+    <div class="breakdown">
+      <span class="name">Cost basis</span>
+      <span class="amt" id="costBasis">—</span>
+    </div>
+    <div class="breakdown">
+      <span class="name">Position value today</span>
+      <span class="amt" id="positionValue">—</span>
+    </div>
+    <div class="breakdown">
+      <span class="name">Price gain ($)</span>
+      <span class="amt" id="priceGainDollar">—</span>
+    </div>
+    <div class="breakdown">
+      <span class="name">Dividends collected ($)</span>
+      <span class="amt pos" id="divDollar">—</span>
+    </div>
+    <div class="breakdown" style="border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.7rem;">
+      <span class="name" style="font-weight:500; color: var(--text)">Total profit / loss</span>
+      <span class="amt" id="totalProfitDollar" style="font-weight:600;">—</span>
+    </div>
+  </div>
+
+  <footer>
+    This calculator assumes you hold the position. Dividends = all payments received since purchase, per share.
+  </footer>
+
+</div>
+
+<script>
+  function fmt(n, decimals) {
+    return n.toFixed(decimals !== undefined ? decimals : 2);
+  }
+
+  function fmtPct(n) {
+    return (n >= 0 ? '+' : '') + fmt(n) + '%';
+  }
+
+  function fmtMoney(n) {
+    return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtMoneyAbs(n) {
+    return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function setColor(el, n) {
+    el.classList.remove('positive', 'negative');
+    if (n > 0) el.classList.add('positive');
+    else if (n < 0) el.classList.add('negative');
+  }
+
+  function setColorClass(el, n) {
+    el.classList.remove('pos', 'neg');
+    if (n > 0) el.classList.add('pos');
+    else if (n < 0) el.classList.add('neg');
+  }
+
+  function calc() {
+    const buy = parseFloat(document.getElementById('buyPrice').value) || 0;
+    const current = parseFloat(document.getElementById('currentPrice').value) || 0;
+    const div = parseFloat(document.getElementById('dividends').value) || 0;
+    const shares = parseFloat(document.getElementById('shares').value) || 1;
+
+    if (buy <= 0) return;
+
+    const priceGainPct = ((current - buy) / buy) * 100;
+    const divReturnPct = (div / buy) * 100;
+    const totalReturnPct = priceGainPct + divReturnPct;
+
+    const costBasis = buy * shares;
+    const positionValue = current * shares;
+    const priceGainDollar = (current - buy) * shares;
+    const divDollar = div * shares;
+    const totalProfit = priceGainDollar + divDollar;
+
+    const tr = document.getElementById('totalReturn');
+    tr.textContent = fmtPct(totalReturnPct);
+    setColor(tr, totalReturnPct);
+
+    const np = document.getElementById('netProfit');
+    np.textContent = fmtMoney(totalProfit);
+    setColor(np, totalProfit);
+
+    const pg = document.getElementById('priceGain');
+    pg.textContent = fmtPct(priceGainPct);
+    setColor(pg, priceGainPct);
+
+    const dr = document.getElementById('divReturn');
+    dr.textContent = '+' + fmt(divReturnPct) + '%';
+    dr.classList.remove('positive', 'negative');
+    if (divReturnPct > 0) dr.classList.add('positive');
+
+    document.getElementById('formulaText').textContent =
+      '(' + fmt(current) + ' − ' + fmt(buy) + ' + ' + fmt(div) + ') ÷ ' + fmt(buy) + ' × 100 = ' + fmtPct(totalReturnPct);
+
+    document.getElementById('costBasis').textContent = fmtMoneyAbs(costBasis);
+    document.getElementById('positionValue').textContent = fmtMoneyAbs(positionValue);
+
+    const pgd = document.getElementById('priceGainDollar');
+    pgd.textContent = fmtMoney(priceGainDollar);
+    setColorClass(pgd, priceGainDollar);
+
+    document.getElementById('divDollar').textContent = '+$' + fmt(divDollar);
+
+    const tpd = document.getElementById('totalProfitDollar');
+    tpd.textContent = fmtMoney(totalProfit);
+    setColorClass(tpd, totalProfit);
+  }
+
+  document.querySelectorAll('input').forEach(el => el.addEventListener('input', calc));
+  calc();
+</script>
+</body>
+</html>
